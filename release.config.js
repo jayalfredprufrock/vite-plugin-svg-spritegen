@@ -1,4 +1,4 @@
-export const config = {
+const config = {
     branches: ['main'],
     plugins: [
       '@semantic-release/commit-analyzer',
@@ -12,3 +12,5 @@ export const config = {
       'semantic-release-major-tag'
     ]
 };
+
+module.exports = config;
