@@ -36,3 +36,4 @@ jobs:
         run: npx -p @semantic-release/git -p semantic-release-major-tag -p semantic-release semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
