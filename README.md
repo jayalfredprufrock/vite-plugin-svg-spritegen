@@ -11,55 +11,45 @@ npm install -D vite-plugin-svg-spritegen
 ```
 
 ## Usage
-```javascript
+```typescript
 // vite.config.js
-import { iconsSpritesheet } from 'vite-plugin-svg-spritegen';
+import { svgSpritegen } from 'vite-plugin-svg-spritegen';
 
 export default {
   plugins: [
-     iconsSpritesheet({
-      // Defaults to false, should it generate TS types for you
-      withTypes: true,
-      // The path to the icon directory
-      inputDir: "icons",
-      // Output path for the generated spritesheet and types
-      outputDir: "public/icons",
-      // Output path for the generated type file, defaults to types.ts in outputDir
-      typesOutputFile: "app/icons.ts",
-      // The name of the generated spritesheet, defaults to sprite.svg
-      fileName: "icon.svg",
-      // The cwd, defaults to process.cwd()
-      cwd: process.cwd(),
-      // Callback function that is called when the script is generating the icon name
-      // This is useful if you want to modify the icon name before it is written to the file
-      iconNameTransformer: (iconName) => iconName
-    }),
+     svgSpritegen({
+          input: [
+              {
+                  baseDir: 'src/assets/icons',
+              },
+              {
+                  baseDir: 'node_modules/lucide-static/icons',
+                  removeAttrs: ['class', 'stroke-width', 'stroke-linecap', 'stroke-linejoin']
+              }
+          ],
+          outputDir: 'src/assets/icons' 
+     })
   ],
 };
 ```
 
-Example component file:
+### Example Icon Component
 
 ```jsx
-import spriteHref from "~/path/sprite.svg"
-import type { SVGProps } from "react"
-import type { IconName } from "~/path/types.ts"
+import spriteHref from '~/assets/icons/sprite.svg';
+import type { FC, SVGProps } from 'react';
+import type { IconName } from '~/assets/icons/types';
 
-export function Icon({
-  name,
-  ...props
-}: SVGProps<SVGSVGElement> & {
-  name: IconName
-}) {
-  return (
-    <svg {...props}>
-      <use href={`${spriteHref}#${name}`} />
-    </svg>
-  )
-}
+export const IconBase: FC<SVGProps<SVGSVGElement> & { name: IconName }> = ({ name, ...props }) => {
+    return (
+        <svg {...props}>
+            <use href={`${spriteHref}#${name}`} />
+        </svg>
+    );
+};
 ```
 
-Component usage:
+### Usage Example
 
 ```jsx
 <Icon name="plus" />
