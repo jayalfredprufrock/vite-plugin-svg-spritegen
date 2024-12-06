@@ -72,7 +72,7 @@ const writeSprite = async (spritePath, svgMap) => {
   const definitions = [];
   await Promise.all(
     [...svgMap.values()].map(async (inputConfig) => {
-      const { svgo, removeAttrs, symbolId, filePath } = inputConfig;
+      const { svgo, svgoPlugins = [], removeAttrs, symbolId, filePath } = inputConfig;
       if (spritePath === filePath) return;
       let svgContent = await promises.readFile(filePath, "utf8");
       if (svgo !== false) {
@@ -87,7 +87,8 @@ const writeSprite = async (spritePath, svgMap) => {
                   attrs: `(${removeAttrs.join("|")})`
                 }
               }
-            ] : []
+            ] : [],
+            ...svgoPlugins
           ]
         }).data;
       }
@@ -131,18 +132,15 @@ const svgoDefault = {
         }
       }
     },
-    "removeDimensions",
-    {
-      name: "removeAttrs",
-      params: { attrs: "(stroke-width|stroke-linecap|stroke-linejoin|class)" }
-    }
+    "removeDimensions"
   ]
 };
 const inputConfigDefaults = {
   pattern: "**/*.svg",
   baseDir: "./",
   prefix: "",
-  removeAttrs: [],
+  removeAttrs: ["stroke-width", "stroke-linecap", "stroke-linejoin", "class"],
+  svgoPlugins: [],
   svgo: svgoDefault,
   getSymbolId: (config) => config.prefix + config.matchPath.replace(/\.[^/.]+$/, "").replaceAll("/", "-").toLowerCase()
 };
