@@ -10,7 +10,7 @@ export const writeSprite = async (spritePath: string, svgMap: SvgMap): Promise<s
 
   await Promise.all(
     [...svgMap.values()].map(async inputConfig => {
-      const { svgo, removeAttrs, symbolId, filePath } = inputConfig;
+      const { svgo, svgoPlugins = [], removeAttrs, symbolId, filePath } = inputConfig;
 
       if (spritePath === filePath) return;
 
@@ -31,6 +31,7 @@ export const writeSprite = async (spritePath: string, svgMap: SvgMap): Promise<s
                   } as const,
                 ]
               : []),
+            ...svgoPlugins,
           ],
         }).data;
       }

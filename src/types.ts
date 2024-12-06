@@ -7,6 +7,7 @@ export interface InputConfig {
   prefix?: string;
   getSymbolId?: (config: Omit<ResolvedInputConfig, 'symbolId'>) => string;
   removeAttrs?: string[];
+  svgoPlugins?: SvgoConfig['plugins'];
   svgo?: SvgoConfig | false;
 }
 

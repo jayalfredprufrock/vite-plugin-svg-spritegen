@@ -22,10 +22,6 @@ const svgoDefault: SvgoConfig = {
       },
     },
     'removeDimensions',
-    {
-      name: 'removeAttrs',
-      params: { attrs: '(stroke-width|stroke-linecap|stroke-linejoin|class)' },
-    },
   ],
 };
 
@@ -33,7 +29,8 @@ const inputConfigDefaults = {
   pattern: '**/*.svg',
   baseDir: './',
   prefix: '',
-  removeAttrs: [],
+  removeAttrs: ['stroke-width', 'stroke-linecap', 'stroke-linejoin', 'class'],
+  svgoPlugins: [],
   svgo: svgoDefault,
   getSymbolId: config =>
     config.prefix +
