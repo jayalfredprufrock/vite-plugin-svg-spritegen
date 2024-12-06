@@ -134,16 +134,20 @@ const svgoDefault = {
         }
       }
     },
-    "removeDimensions"
+    "removeDimensions",
+    {
+      name: "removeAttrs",
+      params: { attrs: "(stroke-width|stroke-linecap|stroke-linejoin|class)" }
+    }
   ]
 };
 const inputConfigDefaults = {
   pattern: "**/*.svg",
   baseDir: "./",
   prefix: "",
-  removeAttrs: ["stroke-width", "stroke-linecap", "stroke-linejoin", "class"],
-  svgoPlugins: [],
+  removeAttrs: [],
   svgo: svgoDefault,
+  svgoPlugins: [],
   getSymbolId: (config) => config.prefix + config.matchPath.replace(/\.[^/.]+$/, "").replaceAll("/", "-").toLowerCase()
 };
 const stripUnusedDefaults = {
