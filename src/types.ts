@@ -23,6 +23,7 @@ export interface StripUnusedConfig {
   enabled?: boolean;
   srcInclude?: FilterPattern;
   srcExclude?: FilterPattern;
+  whitelist?: string[];
 }
 
 export interface PluginConfig {
@@ -32,4 +33,5 @@ export interface PluginConfig {
   typesFileName?: string;
   spriteFileName?: string;
   gitignore?: boolean;
+  matchPattern?: string | RegExp;
 }

@@ -29,6 +29,8 @@ const svgoDefault: SvgoConfig = {
   ],
 };
 
+const defaultMatchPattern = /:\s*(?:"|'|`)(?<icon>.+?)(?:"|'|`)/g;
+
 const inputConfigDefaults = {
   pattern: '**/*.svg',
   baseDir: './',
@@ -48,6 +50,7 @@ const stripUnusedDefaults = {
   enabled: true,
   srcInclude: '**/*.[jt]sx',
   srcExclude: [],
+  whitelist: [],
 } satisfies Required<StripUnusedConfig>;
 
 export function svgSpritegen(config: PluginConfig): Plugin {
@@ -131,11 +134,19 @@ export function svgSpritegen(config: PluginConfig): Plugin {
 
     moduleParsed(info) {
       if (!isBuild || !stripUnusedResolved.enabled || !srcFilter(info.id) || !info.code) return;
-      const matches = info.code.matchAll(/(?:(?:name)|(?:iconName)|(?:icon)): "(?<icon>.+?)"/g);
-      for (const match of matches) {
-        const icon = match.groups?.icon;
 
-        if (!icon || referencedSvgFiles.has(icon)) continue;
+      const matchPattern = config.matchPattern
+        ? new RegExp(config.matchPattern)
+        : defaultMatchPattern;
+
+      const icons = [...info.code.matchAll(matchPattern)].flatMap(
+        ({ groups }) => groups?.icon ?? [],
+      );
+
+      icons.push(...stripUnusedResolved.whitelist);
+
+      for (const icon of icons) {
+        if (!referencedSvgFiles.has(icon)) continue;
 
         const svgPath = allSvgFiles.get(icon);
         if (!svgPath) continue;
@@ -151,7 +162,7 @@ export function svgSpritegen(config: PluginConfig): Plugin {
         // need to replace the source code in the generated sprite file
         // since it was parsed before we wrote the content
         Object.values(bundle).forEach(file => {
-          if (file.type === 'asset' && file.name === spriteNameResolved) {
+          if (file.type === 'asset' && file.names.includes(spriteNameResolved)) {
             file.source = spriteContent;
           }
         });
