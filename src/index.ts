@@ -145,8 +145,6 @@ export function svgSpritegen(config: PluginConfig): Plugin {
 
       matches.push(...stripUnusedResolved.whitelist);
 
-      console.log(matches);
-
       for (const match of matches) {
         if (referencedSvgFiles.has(match)) continue;
 
