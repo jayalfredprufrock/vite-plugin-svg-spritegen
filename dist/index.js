@@ -222,7 +222,6 @@ function svgSpritegen(config) {
         ({ groups }) => (groups == null ? void 0 : groups.icon) ?? []
       );
       matches.push(...stripUnusedResolved.whitelist);
-      console.log(matches);
       for (const match of matches) {
         if (referencedSvgFiles.has(match)) continue;
         const svgPath = allSvgFiles.get(match);
