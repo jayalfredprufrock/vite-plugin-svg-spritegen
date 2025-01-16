@@ -29,7 +29,7 @@ const svgoDefault: SvgoConfig = {
   ],
 };
 
-const defaultMatchPattern = /:\s*(?:"|'|`)(?<icon>.+?)(?:"|'|`)/g;
+const defaultMatchPattern = /(?:(?:name)|(?:iconName)|(?:icon)): "(?<icon>.+?)"/g;
 
 const inputConfigDefaults = {
   pattern: '**/*.svg',
@@ -136,22 +136,24 @@ export function svgSpritegen(config: PluginConfig): Plugin {
       if (!isBuild || !stripUnusedResolved.enabled || !srcFilter(info.id) || !info.code) return;
 
       const matchPattern = config.matchPattern
-        ? new RegExp(config.matchPattern)
+        ? new RegExp(config.matchPattern, 'g')
         : defaultMatchPattern;
 
-      const icons = [...info.code.matchAll(matchPattern)].flatMap(
+      const matches = [...info.code.matchAll(matchPattern)].flatMap(
         ({ groups }) => groups?.icon ?? [],
       );
 
-      icons.push(...stripUnusedResolved.whitelist);
+      matches.push(...stripUnusedResolved.whitelist);
 
-      for (const icon of icons) {
-        if (!referencedSvgFiles.has(icon)) continue;
+      console.log(matches);
 
-        const svgPath = allSvgFiles.get(icon);
+      for (const match of matches) {
+        if (referencedSvgFiles.has(match)) continue;
+
+        const svgPath = allSvgFiles.get(match);
         if (!svgPath) continue;
 
-        referencedSvgFiles.set(icon, svgPath);
+        referencedSvgFiles.set(match, svgPath);
       }
     },
 
