@@ -139,6 +139,7 @@ const svgoDefault = {
     }
   ]
 };
+const defaultMatchPattern = /:\s*(?:"|'|`)(?<icon>.+?)(?:"|'|`)/g;
 const inputConfigDefaults = {
   pattern: "**/*.svg",
   baseDir: "./",
@@ -151,7 +152,8 @@ const inputConfigDefaults = {
 const stripUnusedDefaults = {
   enabled: true,
   srcInclude: "**/*.[jt]sx",
-  srcExclude: []
+  srcExclude: [],
+  whitelist: []
 };
 function svgSpritegen(config) {
   const inputConfigs = Array.isArray(config.input) ? config.input : [config.input ?? inputConfigDefaults];
@@ -212,12 +214,14 @@ function svgSpritegen(config) {
       watcher = watch(inputPaths, { ignoreInitial: true }).on("add", onWatch).on("change", onWatch).on("unlink", onWatch);
     },
     moduleParsed(info) {
-      var _a;
       if (!isBuild || !stripUnusedResolved.enabled || !srcFilter(info.id) || !info.code) return;
-      const matches = info.code.matchAll(/(?:(?:name)|(?:iconName)|(?:icon)): "(?<icon>.+?)"/g);
-      for (const match of matches) {
-        const icon = (_a = match.groups) == null ? void 0 : _a.icon;
-        if (!icon || referencedSvgFiles.has(icon)) continue;
+      const matchPattern = config.matchPattern ? new RegExp(config.matchPattern) : defaultMatchPattern;
+      const icons = [...info.code.matchAll(matchPattern)].flatMap(
+        ({ groups }) => (groups == null ? void 0 : groups.icon) ?? []
+      );
+      icons.push(...stripUnusedResolved.whitelist);
+      for (const icon of icons) {
+        if (!referencedSvgFiles.has(icon)) continue;
         const svgPath = allSvgFiles.get(icon);
         if (!svgPath) continue;
         referencedSvgFiles.set(icon, svgPath);
@@ -227,7 +231,7 @@ function svgSpritegen(config) {
       if (stripUnusedResolved.enabled) {
         const spriteContent = await writeSprite(spriteFilePath, referencedSvgFiles);
         Object.values(bundle).forEach((file) => {
-          if (file.type === "asset" && file.name === spriteNameResolved) {
+          if (file.type === "asset" && file.names.includes(spriteNameResolved)) {
             file.source = spriteContent;
           }
         });
