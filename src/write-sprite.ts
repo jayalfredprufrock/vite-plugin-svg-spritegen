@@ -32,7 +32,7 @@ export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
       }).data;
     }
 
-    const svgEl = parse(svg.content).querySelector('svg') as HTMLElement | null;
+    const svgEl = parse(content).querySelector('svg') as HTMLElement | null;
     if (!svgEl) {
       throw new Error(`SVG file at path "${svg.filePath}" does not contain an svg tag.`);
     }
