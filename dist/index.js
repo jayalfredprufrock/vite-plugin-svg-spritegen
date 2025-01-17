@@ -1,43 +1,54 @@
 "use strict";
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 const path = require("node:path");
+const node_crypto = require("node:crypto");
 const chokidar = require("chokidar");
 const vite = require("vite");
-const fastGlob = require("fast-glob");
 const node_fs = require("node:fs");
+const fastGlob = require("fast-glob");
 const nodeHtmlParser = require("node-html-parser");
 const svgo = require("svgo");
 const buildSvgMap = async (inputConfigs) => {
   const svgMap = /* @__PURE__ */ new Map();
-  for (const inputConfig of inputConfigs) {
-    const { pattern, baseDir, getSymbolId } = inputConfig;
-    const matchPaths = await fastGlob(pattern, { cwd: baseDir });
-    for (const matchPath of matchPaths) {
-      const resolvedInputConfig = {
-        ...inputConfig,
-        matchPath,
-        filePath: path.join(baseDir, matchPath)
-      };
-      const symbolId = getSymbolId(resolvedInputConfig);
-      if (svgMap.has(symbolId)) {
-        console.log(
-          `Duplicate SVG symbol id "${symbolId}. Symbol ids should be unique across all inputs."`
-        );
-        continue;
-      }
-      svgMap.set(symbolId, { ...resolvedInputConfig, symbolId });
-    }
-  }
+  await Promise.all(
+    inputConfigs.map(async (inputConfig) => {
+      const { pattern, baseDir, getSymbolId } = inputConfig;
+      const matchedPaths = await fastGlob(pattern, { cwd: baseDir });
+      await Promise.all(
+        matchedPaths.map(async (matchPath) => {
+          const filePath = path.join(baseDir, matchPath);
+          const content = await node_fs.promises.readFile(filePath, "utf8");
+          const resolvedInputConfig = {
+            ...inputConfig,
+            content,
+            matchPath,
+            filePath
+          };
+          const symbolId = getSymbolId(resolvedInputConfig);
+          if (svgMap.has(symbolId)) {
+            console.log(
+              `Duplicate SVG symbol id "${symbolId}. Symbol ids should be unique across all inputs."`
+            );
+            return;
+          }
+          svgMap.set(symbolId, { ...resolvedInputConfig, symbolId });
+        })
+      );
+    })
+  );
   return svgMap;
 };
-const writeIfChanged = async (filePath, content) => {
+const writeIfChanged = (filePath, content) => {
   try {
-    const currentContent = await node_fs.promises.readFile(filePath, "utf8");
+    const currentContent = node_fs.readFileSync(filePath, "utf8");
     if (content && currentContent !== content) {
-      await node_fs.promises.writeFile(filePath, content, "utf8");
+      node_fs.writeFileSync(filePath, content, "utf8");
+      return true;
     }
+    return false;
   } catch (e) {
-    await node_fs.promises.writeFile(filePath, content ?? "", "utf8");
+    node_fs.writeFileSync(filePath, content ?? "", "utf8");
+    return true;
   }
 };
 const writeTypes = async (filePath, svgMap) => {
@@ -69,48 +80,45 @@ const writeGitignore = async (filePath, spriteName, typesName) => {
     await node_fs.promises.writeFile(filePath, content, "utf8");
   }
 };
-const writeSprite = async (spritePath, svgMap) => {
+const writeSprite = (spritePath, svgMap) => {
   const symbols = [];
   const definitions = [];
-  await Promise.all(
-    [...svgMap.values()].map(async (inputConfig) => {
-      const { svgo: svgo$1, svgoPlugins = [], removeAttrs, symbolId, filePath } = inputConfig;
-      if (spritePath === filePath) return;
-      let svgContent = await node_fs.promises.readFile(filePath, "utf8");
-      if (svgo$1 !== false) {
-        svgContent = svgo.optimize(svgContent, {
-          ...svgo$1,
-          plugins: [
-            ...svgo$1.plugins ?? [],
-            ...removeAttrs.length ? [
-              {
-                name: "removeAttrs",
-                params: {
-                  attrs: `(${removeAttrs.join("|")})`
-                }
+  for (const svg of svgMap.values()) {
+    if (spritePath === svg.filePath) continue;
+    let content2 = svg.content;
+    if (svg.svgo !== false) {
+      content2 = svgo.optimize(content2, {
+        ...svg.svgo,
+        plugins: [
+          ...svg.svgo.plugins ?? [],
+          ...svg.removeAttrs.length ? [
+            {
+              name: "removeAttrs",
+              params: {
+                attrs: `(${svg.removeAttrs.join("|")})`
               }
-            ] : [],
-            ...svgoPlugins
-          ]
-        }).data;
-      }
-      const svg = nodeHtmlParser.parse(svgContent).querySelector("svg");
-      if (!svg) {
-        throw new Error(`SVG file at path "${filePath}" does not contain an svg tag.`);
-      }
-      svg.tagName = "symbol";
-      svg.setAttribute("id", symbolId);
-      svg.removeAttribute("xmlns");
-      svg.removeAttribute("xmlns:xlink");
-      svg.removeAttribute("version");
-      const defs = svg.querySelector("defs");
-      if (defs) {
-        defs.childNodes.forEach((def) => definitions.push(def.toString()));
-        svg.removeChild(defs);
-      }
-      symbols.push(svg.toString());
-    })
-  );
+            }
+          ] : [],
+          ...svg.svgoPlugins
+        ]
+      }).data;
+    }
+    const svgEl = nodeHtmlParser.parse(svg.content).querySelector("svg");
+    if (!svgEl) {
+      throw new Error(`SVG file at path "${svg.filePath}" does not contain an svg tag.`);
+    }
+    svgEl.tagName = "symbol";
+    svgEl.setAttribute("id", svg.symbolId);
+    svgEl.removeAttribute("xmlns");
+    svgEl.removeAttribute("xmlns:xlink");
+    svgEl.removeAttribute("version");
+    const defs = svgEl.querySelector("defs");
+    if (defs) {
+      defs.childNodes.forEach((def) => definitions.push(def.toString()));
+      svgEl.removeChild(defs);
+    }
+    symbols.push(svgEl.toString());
+  }
   const lines = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="0" height="0">'
@@ -120,7 +128,7 @@ const writeSprite = async (spritePath, svgMap) => {
   }
   lines.push(...symbols.map((s) => `  ${s}`), "</svg>");
   const content = lines.join("\n");
-  await writeIfChanged(spritePath, lines.join("\n"));
+  writeIfChanged(spritePath, content);
   return content;
 };
 const svgoDefault = {
@@ -182,9 +190,10 @@ function svgSpritegen(config) {
   const srcExcludeResolved = ["node_modules/**", srcExclude].flat().filter((e) => e !== null);
   const srcFilter = vite.createFilter(srcInclude, srcExcludeResolved);
   let watcher;
-  let allSvgFiles;
-  const referencedSvgFiles = /* @__PURE__ */ new Map();
+  let allSvgs;
+  const referencedSvgs = /* @__PURE__ */ new Map();
   let isBuild = false;
+  let finalSpriteContent = "";
   return {
     name: "svg-spritegen",
     enforce: "post",
@@ -192,20 +201,20 @@ function svgSpritegen(config) {
       isBuild = config2.command === "build";
     },
     async buildStart() {
-      allSvgFiles = await buildSvgMap(inputConfigsResolved);
-      await writeTypes(typesFilePath, allSvgFiles);
+      allSvgs = await buildSvgMap(inputConfigsResolved);
+      await writeTypes(typesFilePath, allSvgs);
       if (config.gitignore !== false) {
         await writeGitignore(gitignoreFilePath, "sprite.svg", "types.ts");
       }
       if (isBuild) {
         if (stripUnusedResolved.enabled) {
-          await writeIfChanged(spriteFilePath);
+          writeIfChanged(spriteFilePath);
         } else {
-          await writeSprite(spriteFilePath, allSvgFiles);
+          writeSprite(spriteFilePath, allSvgs);
         }
         return;
       }
-      await writeSprite(spriteFilePath, allSvgFiles);
+      writeSprite(spriteFilePath, allSvgs);
       const onWatch = (path2) => {
         if (path2 === spriteFilePath) return;
         buildSvgMap(inputConfigsResolved).then((newAllSvgFiles) => {
@@ -223,18 +232,36 @@ function svgSpritegen(config) {
       );
       matches.push(...stripUnusedResolved.whitelist);
       for (const match of matches) {
-        if (referencedSvgFiles.has(match)) continue;
-        const svgPath = allSvgFiles.get(match);
-        if (!svgPath) continue;
-        referencedSvgFiles.set(match, svgPath);
+        if (referencedSvgs.has(match)) continue;
+        const svg = allSvgs.get(match);
+        if (!svg) continue;
+        referencedSvgs.set(match, svg);
       }
+    },
+    outputOptions(options) {
+      if (!stripUnusedResolved.enabled) return null;
+      finalSpriteContent = writeSprite(spriteFilePath, referencedSvgs);
+      return {
+        ...options,
+        assetFileNames: (asset) => {
+          var _a;
+          const name = typeof options.assetFileNames === "string" ? options.assetFileNames : ((_a = options.assetFileNames) == null ? void 0 : _a.call(options, asset)) ?? "assets/[name]-[hash][extname]";
+          if (asset.names.includes(spriteNameResolved)) {
+            return name.replace(
+              "[hash]",
+              node_crypto.hash("sha256", finalSpriteContent, "hex").substring(0, 8)
+            );
+          } else {
+            return name;
+          }
+        }
+      };
     },
     async generateBundle(_options, bundle) {
       if (stripUnusedResolved.enabled) {
-        const spriteContent = await writeSprite(spriteFilePath, referencedSvgFiles);
         Object.values(bundle).forEach((file) => {
           if (file.type === "asset" && file.names.includes(spriteNameResolved)) {
-            file.source = spriteContent;
+            file.source = finalSpriteContent;
           }
         });
       }

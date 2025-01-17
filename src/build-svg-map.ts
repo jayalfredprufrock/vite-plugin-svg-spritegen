@@ -1,32 +1,41 @@
 import path from 'node:path';
+import { promises as fs } from 'node:fs';
 import fastGlob from 'fast-glob';
 import type { InputConfig, SvgMap } from './types';
 
 export const buildSvgMap = async (inputConfigs: Required<InputConfig>[]): Promise<SvgMap> => {
   const svgMap: SvgMap = new Map();
 
-  for (const inputConfig of inputConfigs) {
-    const { pattern, baseDir, getSymbolId } = inputConfig;
+  await Promise.all(
+    inputConfigs.map(async inputConfig => {
+      const { pattern, baseDir, getSymbolId } = inputConfig;
+      const matchedPaths = await fastGlob(pattern, { cwd: baseDir });
+      await Promise.all(
+        matchedPaths.map(async matchPath => {
+          const filePath = path.join(baseDir, matchPath);
+          const content = await fs.readFile(filePath, 'utf8');
 
-    const matchPaths = await fastGlob(pattern, { cwd: baseDir });
-    for (const matchPath of matchPaths) {
-      const resolvedInputConfig = {
-        ...inputConfig,
-        matchPath,
-        filePath: path.join(baseDir, matchPath),
-      };
+          const resolvedInputConfig = {
+            ...inputConfig,
+            content,
+            matchPath,
+            filePath,
+          };
 
-      const symbolId = getSymbolId(resolvedInputConfig);
+          const symbolId = getSymbolId(resolvedInputConfig);
 
-      if (svgMap.has(symbolId)) {
-        console.log(
-          `Duplicate SVG symbol id "${symbolId}. Symbol ids should be unique across all inputs."`,
-        );
-        continue;
-      }
+          if (svgMap.has(symbolId)) {
+            console.log(
+              `Duplicate SVG symbol id "${symbolId}. Symbol ids should be unique across all inputs."`,
+            );
+            return;
+          }
 
-      svgMap.set(symbolId, { ...resolvedInputConfig, symbolId });
-    }
-  }
+          svgMap.set(symbolId, { ...resolvedInputConfig, symbolId });
+        }),
+      );
+    }),
+  );
+
   return svgMap;
 };

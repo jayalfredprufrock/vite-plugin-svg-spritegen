@@ -15,6 +15,7 @@ export interface ResolvedInputConfig extends Required<InputConfig> {
   symbolId: string;
   matchPath: string;
   filePath: string;
+  content: string;
 }
 
 export type SvgMap = Map<string, ResolvedInputConfig>;

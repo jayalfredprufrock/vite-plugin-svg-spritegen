@@ -1,13 +1,16 @@
-import { promises as fs } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
-export const writeIfChanged = async (filePath: string, content?: string): Promise<void> => {
+export const writeIfChanged = (filePath: string, content?: string): boolean => {
   try {
-    const currentContent = await fs.readFile(filePath, 'utf8');
+    const currentContent = readFileSync(filePath, 'utf8');
 
     if (content && currentContent !== content) {
-      await fs.writeFile(filePath, content, 'utf8');
+      writeFileSync(filePath, content, 'utf8');
+      return true;
     }
+    return false;
   } catch (e) {
-    await fs.writeFile(filePath, content ?? '', 'utf8');
+    writeFileSync(filePath, content ?? '', 'utf8');
+    return true;
   }
 };

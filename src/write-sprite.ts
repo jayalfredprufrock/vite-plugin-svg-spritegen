@@ -1,62 +1,57 @@
-import { promises as fs } from 'node:fs';
 import { HTMLElement, parse } from 'node-html-parser';
 import { optimize } from 'svgo';
 import { writeIfChanged } from './write-if-changed';
 import type { SvgMap } from './types';
 
-export const writeSprite = async (spritePath: string, svgMap: SvgMap): Promise<string> => {
+export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
   const symbols: string[] = [];
   const definitions: string[] = [];
 
-  await Promise.all(
-    [...svgMap.values()].map(async inputConfig => {
-      const { svgo, svgoPlugins = [], removeAttrs, symbolId, filePath } = inputConfig;
+  for (const svg of svgMap.values()) {
+    if (spritePath === svg.filePath) continue;
 
-      if (spritePath === filePath) return;
+    let content = svg.content;
 
-      let svgContent = await fs.readFile(filePath, 'utf8');
+    if (svg.svgo !== false) {
+      content = optimize(content, {
+        ...svg.svgo,
+        plugins: [
+          ...(svg.svgo.plugins ?? []),
+          ...(svg.removeAttrs.length
+            ? [
+                {
+                  name: 'removeAttrs',
+                  params: {
+                    attrs: `(${svg.removeAttrs.join('|')})`,
+                  },
+                } as const,
+              ]
+            : []),
+          ...svg.svgoPlugins,
+        ],
+      }).data;
+    }
 
-      if (svgo !== false) {
-        svgContent = optimize(svgContent, {
-          ...svgo,
-          plugins: [
-            ...(svgo.plugins ?? []),
-            ...(removeAttrs.length
-              ? [
-                  {
-                    name: 'removeAttrs',
-                    params: {
-                      attrs: `(${removeAttrs.join('|')})`,
-                    },
-                  } as const,
-                ]
-              : []),
-            ...svgoPlugins,
-          ],
-        }).data;
-      }
+    const svgEl = parse(svg.content).querySelector('svg') as HTMLElement | null;
+    if (!svgEl) {
+      throw new Error(`SVG file at path "${svg.filePath}" does not contain an svg tag.`);
+    }
 
-      const svg = parse(svgContent).querySelector('svg') as HTMLElement | null;
-      if (!svg) {
-        throw new Error(`SVG file at path "${filePath}" does not contain an svg tag.`);
-      }
+    svgEl.tagName = 'symbol';
+    svgEl.setAttribute('id', svg.symbolId);
+    svgEl.removeAttribute('xmlns');
+    svgEl.removeAttribute('xmlns:xlink');
+    svgEl.removeAttribute('version');
 
-      svg.tagName = 'symbol';
-      svg.setAttribute('id', symbolId);
-      svg.removeAttribute('xmlns');
-      svg.removeAttribute('xmlns:xlink');
-      svg.removeAttribute('version');
+    const defs = svgEl.querySelector('defs');
 
-      const defs = svg.querySelector('defs');
+    if (defs) {
+      defs.childNodes.forEach(def => definitions.push(def.toString()));
+      svgEl.removeChild(defs);
+    }
 
-      if (defs) {
-        defs.childNodes.forEach(def => definitions.push(def.toString()));
-        svg.removeChild(defs);
-      }
-
-      symbols.push(svg.toString());
-    }),
-  );
+    symbols.push(svgEl.toString());
+  }
 
   const lines = [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -71,7 +66,7 @@ export const writeSprite = async (spritePath: string, svgMap: SvgMap): Promise<s
 
   const content = lines.join('\n');
 
-  await writeIfChanged(spritePath, lines.join('\n'));
+  writeIfChanged(spritePath, content);
 
   return content;
 };
