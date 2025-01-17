@@ -12,8 +12,9 @@ const buildSvgMap = async (inputConfigs) => {
     inputConfigs.map(async (inputConfig) => {
       const { pattern, baseDir, getSymbolId } = inputConfig;
       const matchedPaths = await fastGlob(pattern, { cwd: baseDir });
+      const matchedPathsSorted = matchedPaths.sort((a, b) => a.localeCompare(b));
       await Promise.all(
-        matchedPaths.map(async (matchPath) => {
+        matchedPathsSorted.map(async (matchPath) => {
           const filePath = path.join(baseDir, matchPath);
           const content = await promises.readFile(filePath, "utf8");
           const resolvedInputConfig = {
@@ -81,8 +82,7 @@ const writeGitignore = async (filePath, spriteName, typesName) => {
 const writeSprite = (spritePath, svgMap) => {
   const symbols = [];
   const definitions = [];
-  const svgSorted = [...svgMap].sort((a, b) => String(a[0]).localeCompare(b[0])).map(([_, svg]) => svg);
-  for (const svg of svgSorted) {
+  for (const svg of svgMap.values()) {
     if (spritePath === svg.filePath) continue;
     let content2 = svg.content;
     if (svg.svgo !== false) {
