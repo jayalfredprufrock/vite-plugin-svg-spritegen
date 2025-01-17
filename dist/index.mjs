@@ -101,7 +101,7 @@ const writeSprite = (spritePath, svgMap) => {
         ]
       }).data;
     }
-    const svgEl = parse(svg.content).querySelector("svg");
+    const svgEl = parse(content2).querySelector("svg");
     if (!svgEl) {
       throw new Error(`SVG file at path "${svg.filePath}" does not contain an svg tag.`);
     }
