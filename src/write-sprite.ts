@@ -7,11 +7,7 @@ export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
   const symbols: string[] = [];
   const definitions: string[] = [];
 
-  const svgSorted = [...svgMap]
-    .sort((a, b) => String(a[0]).localeCompare(b[0]))
-    .map(([_, svg]) => svg);
-
-  for (const svg of svgSorted) {
+  for (const svg of svgMap.values()) {
     if (spritePath === svg.filePath) continue;
 
     let content = svg.content;
