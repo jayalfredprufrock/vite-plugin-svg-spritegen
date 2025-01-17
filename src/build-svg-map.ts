@@ -9,11 +9,9 @@ export const buildSvgMap = async (inputConfigs: Required<InputConfig>[]): Promis
   await Promise.all(
     inputConfigs.map(async inputConfig => {
       const { pattern, baseDir, getSymbolId } = inputConfig;
-      // todo perform sort here
       const matchedPaths = await fastGlob(pattern, { cwd: baseDir });
-      const matchedPathsSorted = matchedPaths.sort((a, b) => a.localeCompare(b));
       await Promise.all(
-        matchedPathsSorted.map(async matchPath => {
+        matchedPaths.map(async matchPath => {
           const filePath = path.join(baseDir, matchPath);
           const content = await fs.readFile(filePath, 'utf8');
 
