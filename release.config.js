@@ -5,7 +5,7 @@ const config = {
       '@semantic-release/release-notes-generator',
       '@semantic-release/npm',
       ["@semantic-release/git", {
-        "assets": ["package.json", "dist/index.js", "dist/index.mjs", "dist/index.d.ts", "README.md"],
+        "assets": ["package.json", "dist/index.js", "dist/index.mjs", "dist/index.d.ts", "dist/types.d.ts"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }],
       '@semantic-release/github',
