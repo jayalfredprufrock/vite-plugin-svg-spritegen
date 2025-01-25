@@ -22,6 +22,7 @@ export type SvgMap = Map<string, ResolvedInputConfig>;
 
 export interface StripUnusedConfig {
   enabled?: boolean;
+  matchPattern?: string | RegExp;
   srcInclude?: FilterPattern;
   srcExclude?: FilterPattern;
   whitelist?: string[];
@@ -34,5 +35,4 @@ export interface PluginConfig {
   typesFileName?: string;
   spriteFileName?: string;
   gitignore?: boolean;
-  matchPattern?: string | RegExp;
 }

@@ -30,7 +30,7 @@ const svgoDefault: SvgoConfig = {
   ],
 };
 
-const defaultMatchPattern = /(?:(?:name)|(?:iconName)|(?:icon)): "(?<icon>.+?)"/g;
+const defaultMatchPattern = /((name)|(iconName)|(icon)):\s?"(?<icon>.+?)"/g;
 
 const inputConfigDefaults = {
   pattern: '**/*.svg',
@@ -49,7 +49,8 @@ const inputConfigDefaults = {
 
 const stripUnusedDefaults = {
   enabled: true,
-  srcInclude: '**/*.[jt]sx',
+  matchPattern: defaultMatchPattern,
+  srcInclude: ['**/*.[jt]sx', '**/*.md?(x)'],
   srcExclude: [],
   whitelist: [],
 } satisfies Required<StripUnusedConfig>;
@@ -138,9 +139,7 @@ export function svgSpritegen(config: PluginConfig): Plugin {
     moduleParsed(info) {
       if (!isBuild || !stripUnusedResolved.enabled || !srcFilter(info.id) || !info.code) return;
 
-      const matchPattern = config.matchPattern
-        ? new RegExp(config.matchPattern, 'g')
-        : defaultMatchPattern;
+      const matchPattern = new RegExp(stripUnusedResolved.matchPattern, 'g');
 
       const matches = [...info.code.matchAll(matchPattern)].flatMap(
         ({ groups }) => groups?.icon ?? [],
@@ -200,3 +199,5 @@ export function svgSpritegen(config: PluginConfig): Plugin {
     },
   };
 }
+
+export default svgSpritegen;
