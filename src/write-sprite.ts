@@ -25,6 +25,7 @@ export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
             params: {
               overrides: {
                 removeViewBox: false,
+                mergePaths: false,
                 convertColors: { currentColor: true },
                 ...svg.svgoOverrides,
               },
