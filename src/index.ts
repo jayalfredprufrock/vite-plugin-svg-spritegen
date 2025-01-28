@@ -7,28 +7,8 @@ import { writeTypes } from './write-types';
 import { writeGitignore } from './write-gitignore';
 import { writeSprite } from './write-sprite';
 import { writeIfChanged } from './write-if-changed';
-import type { Config as SvgoConfig } from 'svgo';
 import type { Plugin } from 'vite';
-import type { InputConfig, PluginConfig, StripUnusedConfig, SvgMap } from './types';
-
-const svgoDefault: SvgoConfig = {
-  plugins: [
-    {
-      name: 'preset-default',
-      params: {
-        overrides: {
-          removeViewBox: false,
-          convertColors: { currentColor: true },
-        },
-      },
-    },
-    'removeDimensions',
-    {
-      name: 'removeAttrs',
-      params: { attrs: '(stroke-width|stroke-linecap|stroke-linejoin|class)' },
-    },
-  ],
-};
+import type { InputConfigWithDefaults, PluginConfig, StripUnusedConfig, SvgMap } from './types';
 
 const defaultMatchPattern = /((name)|(iconName)|(icon)):\s?"(?<icon>.+?)"/g;
 
@@ -37,7 +17,6 @@ const inputConfigDefaults = {
   baseDir: './',
   prefix: '',
   removeAttrs: [],
-  svgo: svgoDefault,
   svgoPlugins: [],
   getSymbolId: config =>
     config.prefix +
@@ -45,7 +24,7 @@ const inputConfigDefaults = {
       .replace(/\.[^/.]+$/, '')
       .replaceAll('/', '-')
       .toLowerCase(),
-} satisfies Required<InputConfig>;
+} satisfies InputConfigWithDefaults;
 
 const stripUnusedDefaults = {
   enabled: true,

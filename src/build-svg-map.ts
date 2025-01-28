@@ -1,9 +1,9 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import fastGlob from 'fast-glob';
-import type { InputConfig, SvgMap } from './types';
+import type { InputConfigWithDefaults, SvgMap } from './types';
 
-export const buildSvgMap = async (inputConfigs: Required<InputConfig>[]): Promise<SvgMap> => {
+export const buildSvgMap = async (inputConfigs: InputConfigWithDefaults[]): Promise<SvgMap> => {
   const svgMap: SvgMap = new Map();
 
   await Promise.all(

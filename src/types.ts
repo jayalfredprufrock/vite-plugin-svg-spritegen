@@ -1,5 +1,6 @@
 import { FilterPattern } from 'vite';
 import { Config as SvgoConfig } from 'svgo';
+import { PresetDefaultOverrides } from 'svgo/plugins/plugins-types';
 
 export interface InputConfig {
   pattern?: string;
@@ -8,10 +9,14 @@ export interface InputConfig {
   getSymbolId?: (config: Omit<ResolvedInputConfig, 'symbolId'>) => string;
   removeAttrs?: string[];
   svgoPlugins?: SvgoConfig['plugins'];
+  svgoOverrides?: PresetDefaultOverrides;
   svgo?: SvgoConfig | false;
 }
 
-export interface ResolvedInputConfig extends Required<InputConfig> {
+export type InputConfigWithDefaults = Required<Omit<InputConfig, 'svgoOverrides' | 'svgo'>> &
+  Pick<InputConfig, 'svgoOverrides' | 'svgo'>;
+
+export interface ResolvedInputConfig extends InputConfigWithDefaults {
   symbolId: string;
   matchPath: string;
   filePath: string;

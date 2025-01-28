@@ -1,6 +1,7 @@
 import { HTMLElement, parse } from 'node-html-parser';
 import { optimize } from 'svgo';
 import { writeIfChanged } from './write-if-changed';
+import type { Config as SvgoConfig } from 'svgo';
 import type { SvgMap } from './types';
 
 export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
@@ -17,6 +18,28 @@ export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
     let content = svg.content;
 
     if (svg.svgo !== false) {
+      const svgoDefault: SvgoConfig = {
+        plugins: [
+          {
+            name: 'preset-default',
+            params: {
+              overrides: {
+                removeViewBox: false,
+                convertColors: { currentColor: true },
+                ...svg.svgoOverrides,
+              },
+            },
+          },
+          'removeDimensions',
+          {
+            name: 'removeAttrs',
+            params: { attrs: '(stroke-width|stroke-linecap|stroke-linejoin|class)' },
+          },
+        ],
+      };
+
+      svg.svgo = svg.svgo ?? svgoDefault;
+
       content = optimize(content, {
         ...svg.svgo,
         plugins: [
