@@ -10,7 +10,7 @@ import { writeIfChanged } from './write-if-changed';
 import type { Plugin } from 'vite';
 import type { InputConfigWithDefaults, PluginConfig, StripUnusedConfig, SvgMap } from './types';
 
-const defaultMatchPattern = /((name)|(iconName)|(icon)):\s?"(?<icon>.+?)"/g;
+const defaultMatchPattern = /((name)|(\S*icon\S*)):\s?"(?<icon>.+?)"/gi;
 
 const inputConfigDefaults = {
   pattern: '**/*.svg',
@@ -118,7 +118,10 @@ export function svgSpritegen(config: PluginConfig): Plugin {
     moduleParsed(info) {
       if (!isBuild || !stripUnusedResolved.enabled || !srcFilter(info.id) || !info.code) return;
 
-      const matchPattern = new RegExp(stripUnusedResolved.matchPattern, 'g');
+      const matchPattern =
+        stripUnusedResolved.matchPattern instanceof RegExp
+          ? stripUnusedResolved.matchPattern
+          : new RegExp(stripUnusedResolved.matchPattern, 'ig');
 
       const matches = [...info.code.matchAll(matchPattern)].flatMap(
         ({ groups }) => groups?.icon ?? [],
