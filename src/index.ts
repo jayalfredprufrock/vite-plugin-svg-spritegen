@@ -10,7 +10,7 @@ import { writeIfChanged } from './write-if-changed';
 import type { Plugin } from 'vite';
 import type { InputConfigWithDefaults, PluginConfig, StripUnusedConfig, SvgMap } from './types';
 
-const defaultMatchPattern = /((name)|(\S*icon\S*)):\s?"(?<icon>.+?)"/gi;
+const defaultMatchPattern = /(\S*icon\S*):\s?"(?<icon>.+?)"/gi;
 
 const inputConfigDefaults = {
   pattern: '**/*.svg',
