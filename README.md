@@ -40,10 +40,10 @@ import spriteHref from '~/assets/icons/sprite.svg';
 import type { FC, SVGProps } from 'react';
 import type { IconName } from '~/assets/icons/types';
 
-export const IconBase: FC<SVGProps<SVGSVGElement> & { name: IconName }> = ({ name, ...props }) => {
+export const IconBase: FC<SVGProps<SVGSVGElement> & { icon: IconName }> = ({ icon, ...props }) => {
     return (
         <svg {...props}>
-            <use href={`${spriteHref}#${name}`} />
+            <use href={`${spriteHref}#${icon}`} />
         </svg>
     );
 };
@@ -52,5 +52,5 @@ export const IconBase: FC<SVGProps<SVGSVGElement> & { name: IconName }> = ({ nam
 ### Usage Example
 
 ```jsx
-<Icon name="plus" />
+<Icon icon="plus" />
 ```
