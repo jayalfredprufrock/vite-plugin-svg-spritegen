@@ -118,10 +118,7 @@ export function svgSpritegen(config: PluginConfig): Plugin {
     moduleParsed(info) {
       if (!isBuild || !stripUnusedResolved.enabled || !srcFilter(info.id) || !info.code) return;
 
-      const matchPattern =
-        stripUnusedResolved.matchPattern instanceof RegExp
-          ? stripUnusedResolved.matchPattern
-          : new RegExp(stripUnusedResolved.matchPattern, 'ig');
+      const matchPattern = new RegExp(stripUnusedResolved.matchPattern, 'g');
 
       const matches = [...info.code.matchAll(matchPattern)].flatMap(
         ({ groups }) => groups?.icon ?? [],
