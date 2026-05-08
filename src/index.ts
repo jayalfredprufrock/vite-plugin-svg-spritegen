@@ -8,7 +8,7 @@ import { buildSpriteContent, writeSprite } from './write-sprite';
 import type { FilterPattern, Plugin } from 'vite';
 import type { InputConfigWithDefaults, PluginConfig, StripUnusedConfig, SvgMap } from './types';
 
-const defaultMatchPattern = /(\S*icon\S*):\s?"(?<icon>.+?)"/gi;
+const defaultMatchPattern = /['"`]?icon['"`]?\s*[=:]{1}\s*['"`]{1}(?<icon>.+?)['"`]{1}/gi;
 
 const inputConfigDefaults = {
   pattern: '**/*.svg',
