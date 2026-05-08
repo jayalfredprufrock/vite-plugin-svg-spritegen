@@ -4,7 +4,7 @@ import { normalizePath } from 'vite';
 import { buildSvgMap } from './build-svg-map';
 import { writeTypes } from './write-types';
 import { writeGitignore } from './write-gitignore';
-import { writeSprite, buildSpriteContent } from './write-sprite';
+import { buildSpriteContent, writeSprite } from './write-sprite';
 import type { FilterPattern, Plugin } from 'vite';
 import type { InputConfigWithDefaults, PluginConfig, StripUnusedConfig, SvgMap } from './types';
 
