@@ -172,7 +172,7 @@ var writeSprite = (spritePath, svgMap) => {
 };
 //#endregion
 //#region src/index.ts
-var defaultMatchPattern = /(\S*icon\S*):\s?"(?<icon>.+?)"/gi;
+var defaultMatchPattern = /['"`]?icon['"`]?\s*[=:]{1}\s*['"`]{1}(?<icon>.+?)['"`]{1}/gi;
 var inputConfigDefaults = {
 	pattern: "**/*.svg",
 	baseDir: "./",
@@ -228,7 +228,10 @@ function svgSpritegen(config) {
 			allSvgs = await buildSvgMap(inputConfigsResolved);
 			await writeTypes(typesFilePath, allSvgs);
 			if (config.gitignore !== false) await writeGitignore(gitignoreFilePath, "sprite.svg", "types.ts");
-			if (isBuild) return;
+			if (isBuild) {
+				writeIfChanged(spriteFilePath);
+				return;
+			}
 			writeSprite(spriteFilePath, allSvgs);
 			const onWatch = (changedPath) => {
 				if (changedPath === spriteFilePath) return;

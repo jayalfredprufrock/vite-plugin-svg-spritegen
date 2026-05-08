@@ -5,6 +5,7 @@ import { buildSvgMap } from './build-svg-map';
 import { writeTypes } from './write-types';
 import { writeGitignore } from './write-gitignore';
 import { buildSpriteContent, writeSprite } from './write-sprite';
+import { writeIfChanged } from './write-if-changed';
 import type { FilterPattern, Plugin } from 'vite';
 import type { InputConfigWithDefaults, PluginConfig, StripUnusedConfig, SvgMap } from './types';
 
@@ -93,7 +94,13 @@ export function svgSpritegen(config: PluginConfig): Plugin {
         await writeGitignore(gitignoreFilePath, 'sprite.svg', 'types.ts');
       }
 
-      if (isBuild) return;
+      if (isBuild) {
+        // Ensure the sprite file exists so the user's import can be resolved on a fresh build.
+        // The content is irrelevant — we redirect the import to a virtual id and emit the
+        // real sprite as a build asset in buildEnd.
+        writeIfChanged(spriteFilePath);
+        return;
+      }
 
       writeSprite(spriteFilePath, allSvgs);
 
