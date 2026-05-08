@@ -1,34 +1,37 @@
 ![npm](https://img.shields.io/npm/v/vite-plugin-svg-spritegen?style=flat)
 ![GitHub](https://img.shields.io/github/license/jayalfredprufrock/vite-plugin-svg-spritegen?style=flat)
-![npm](https://img.shields.io/npm/dy/vite-plugin-svg-spritegen?style=flat) 
+![npm](https://img.shields.io/npm/dy/vite-plugin-svg-spritegen?style=flat)
 
 # vite-plugin-svg-spritegen
 
-
 ## Installation
+
+v2.x is Vite 8+ only. Use v1.x for Vite 5-7
+
 ```bash
 npm install -D vite-plugin-svg-spritegen
 ```
 
 ## Usage
+
 ```typescript
 // vite.config.js
 import { svgSpritegen } from 'vite-plugin-svg-spritegen';
 
 export default {
   plugins: [
-     svgSpritegen({
-          input: [
-              {
-                  baseDir: 'src/assets/icons',
-              },
-              {
-                  baseDir: 'node_modules/lucide-static/icons',
-                  removeAttrs: ['class', 'stroke-width', 'stroke-linecap', 'stroke-linejoin']
-              }
-          ],
-          outputDir: 'src/assets/icons' 
-     })
+    svgSpritegen({
+      input: [
+        {
+          baseDir: 'src/assets/icons',
+        },
+        {
+          baseDir: 'node_modules/lucide-static/icons',
+          removeAttrs: ['class', 'stroke-width', 'stroke-linecap', 'stroke-linejoin'],
+        },
+      ],
+      outputDir: 'src/assets/icons',
+    }),
   ],
 };
 ```

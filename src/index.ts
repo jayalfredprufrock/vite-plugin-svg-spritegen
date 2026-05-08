@@ -1,13 +1,11 @@
 import path from 'node:path';
-import { hash } from 'node:crypto';
 import { FSWatcher, watch as watchDirs } from 'chokidar';
-import { createFilter, normalizePath } from 'vite';
+import { normalizePath } from 'vite';
 import { buildSvgMap } from './build-svg-map';
 import { writeTypes } from './write-types';
 import { writeGitignore } from './write-gitignore';
-import { writeSprite } from './write-sprite';
-import { writeIfChanged } from './write-if-changed';
-import type { Plugin } from 'vite';
+import { writeSprite, buildSpriteContent } from './write-sprite';
+import type { FilterPattern, Plugin } from 'vite';
 import type { InputConfigWithDefaults, PluginConfig, StripUnusedConfig, SvgMap } from './types';
 
 const defaultMatchPattern = /(\S*icon\S*):\s?"(?<icon>.+?)"/gi;
@@ -34,6 +32,12 @@ const stripUnusedDefaults = {
   whitelist: [],
 } satisfies Required<StripUnusedConfig>;
 
+const SPRITE_VIRTUAL_ID = '\0virtual:svg-spritegen-sprite';
+const SPRITE_URL_PLACEHOLDER = '__SVG_SPRITEGEN_SPRITE_URL_PLACEHOLDER__';
+
+const toFilterArray = (p: FilterPattern): (string | RegExp)[] =>
+  [p].flat().filter((x): x is string | RegExp => x != null);
+
 export function svgSpritegen(config: PluginConfig): Plugin {
   const inputConfigs = Array.isArray(config.input)
     ? config.input
@@ -55,30 +59,30 @@ export function svgSpritegen(config: PluginConfig): Plugin {
   }
 
   const outputPath = path.resolve(process.cwd(), config.outputDir);
-
   const spriteNameResolved = config.spriteFileName ?? 'sprite.svg';
-
   const typesFilePath = normalizePath(path.join(outputPath, config.typesFileName ?? 'types.ts'));
   const spriteFilePath = normalizePath(path.join(outputPath, spriteNameResolved));
   const gitignoreFilePath = normalizePath(path.join(outputPath, '.gitignore'));
 
-  const { srcInclude, srcExclude } = stripUnusedResolved;
-  const srcExcludeResolved = ['node_modules/**', srcExclude].flat().filter(e => e !== null);
-  const srcFilter = createFilter(srcInclude, srcExcludeResolved);
+  const matchPatternRe = new RegExp(stripUnusedResolved.matchPattern, 'g');
 
-  let watcher: FSWatcher;
+  const idIncludes = toFilterArray(stripUnusedResolved.srcInclude);
+  const idExcludes = ['**/node_modules/**', ...toFilterArray(stripUnusedResolved.srcExclude)];
+
+  let watcher: FSWatcher | undefined;
   let allSvgs: SvgMap;
   const referencedSvgs: SvgMap = new Map();
   let isBuild = false;
-
-  let finalSpriteContent = '';
+  let viteBase = '/';
+  let spriteRefId: string | undefined;
 
   return {
     name: 'svg-spritegen',
-    enforce: 'post',
+    enforce: 'pre',
 
     configResolved(config) {
       isBuild = config.command === 'build';
+      viteBase = config.base ?? '/';
     },
 
     async buildStart() {
@@ -89,88 +93,96 @@ export function svgSpritegen(config: PluginConfig): Plugin {
         await writeGitignore(gitignoreFilePath, 'sprite.svg', 'types.ts');
       }
 
-      if (isBuild) {
-        if (stripUnusedResolved.enabled) {
-          // creates an empty sprite file if none exists
-          writeIfChanged(spriteFilePath);
-        } else {
-          writeSprite(spriteFilePath, allSvgs);
-        }
-        return;
-      }
+      if (isBuild) return;
 
       writeSprite(spriteFilePath, allSvgs);
 
-      const onWatch = (path: string) => {
-        if (path === spriteFilePath) return;
+      const onWatch = (changedPath: string) => {
+        if (changedPath === spriteFilePath) return;
         buildSvgMap(inputConfigsResolved).then(newAllSvgFiles => {
           writeSprite(spriteFilePath, newAllSvgFiles);
         });
       };
 
-      const inputPaths = inputConfigsResolved.map(config => config.baseDir);
+      const inputPaths = inputConfigsResolved.map(c => c.baseDir);
       watcher = watchDirs(inputPaths, { ignoreInitial: true })
         .on('add', onWatch)
         .on('change', onWatch)
         .on('unlink', onWatch);
     },
 
-    moduleParsed(info) {
-      if (!isBuild || !stripUnusedResolved.enabled || !srcFilter(info.id) || !info.code) return;
+    resolveId: {
+      filter: { id: new RegExp(`${spriteNameResolved.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) },
+      async handler(source, importer) {
+        if (!isBuild) return null;
+        if (source === SPRITE_VIRTUAL_ID) return null;
 
-      const matchPattern = new RegExp(stripUnusedResolved.matchPattern, 'g');
-
-      const matches = [...info.code.matchAll(matchPattern)].flatMap(
-        ({ groups }) => groups?.icon ?? [],
-      );
-
-      matches.push(...stripUnusedResolved.whitelist);
-
-      for (const match of matches) {
-        if (referencedSvgs.has(match)) continue;
-
-        const svg = allSvgs.get(match);
-        if (!svg) continue;
-
-        referencedSvgs.set(match, svg);
-      }
+        const resolved = await this.resolve(source, importer, { skipSelf: true });
+        if (resolved && normalizePath(resolved.id) === spriteFilePath) {
+          return SPRITE_VIRTUAL_ID;
+        }
+        return null;
+      },
     },
 
-    outputOptions(options) {
-      if (!stripUnusedResolved.enabled) return null;
-
-      finalSpriteContent = writeSprite(spriteFilePath, referencedSvgs);
-
-      return {
-        ...options,
-        assetFileNames: asset => {
-          const name =
-            typeof options.assetFileNames === 'string'
-              ? options.assetFileNames
-              : (options.assetFileNames?.(asset) ?? 'assets/[name]-[hash][extname]');
-
-          if (asset.names.includes(spriteNameResolved)) {
-            return name.replace(
-              '[hash]',
-              hash('sha256', finalSpriteContent, 'hex').substring(0, 8),
-            );
-          } else {
-            return name;
-          }
-        },
-      };
+    load(id) {
+      if (id === SPRITE_VIRTUAL_ID) {
+        return `export default ${JSON.stringify(SPRITE_URL_PLACEHOLDER)};`;
+      }
+      return null;
     },
 
-    async generateBundle(_options, bundle) {
-      if (stripUnusedResolved.enabled) {
-        // need to replace the source code in the generated sprite file
-        // since it was parsed before we wrote the content
-        Object.values(bundle).forEach(file => {
-          if (file.type === 'asset' && file.names.includes(spriteNameResolved)) {
-            file.source = finalSpriteContent;
-          }
-        });
+    transform: {
+      filter: {
+        id: { include: idIncludes, exclude: idExcludes },
+        code: matchPatternRe,
+      },
+      handler(code) {
+        if (!isBuild || !stripUnusedResolved.enabled) return null;
+
+        const matches = [...code.matchAll(matchPatternRe)].flatMap(
+          ({ groups }) => groups?.icon ?? [],
+        );
+
+        for (const match of matches) {
+          if (referencedSvgs.has(match)) continue;
+          const svg = allSvgs.get(match);
+          if (svg) referencedSvgs.set(match, svg);
+        }
+
+        return null;
+      },
+    },
+
+    buildEnd() {
+      if (!isBuild) return;
+
+      for (const id of stripUnusedResolved.whitelist) {
+        if (referencedSvgs.has(id)) continue;
+        const svg = allSvgs.get(id);
+        if (svg) referencedSvgs.set(id, svg);
       }
+
+      const sourceMap = stripUnusedResolved.enabled ? referencedSvgs : allSvgs;
+
+      spriteRefId = this.emitFile({
+        type: 'asset',
+        name: spriteNameResolved,
+        source: buildSpriteContent(sourceMap, spriteFilePath),
+      });
+    },
+
+    renderChunk: {
+      filter: { code: SPRITE_URL_PLACEHOLDER },
+      handler(code) {
+        if (!spriteRefId) return null;
+
+        const fileName = this.getFileName(spriteRefId);
+        const baseSlash = viteBase.endsWith('/') ? viteBase : `${viteBase}/`;
+        const url = `${baseSlash}${fileName}`;
+
+        return code.replaceAll(SPRITE_URL_PLACEHOLDER, url);
+      },
     },
 
     async closeBundle() {

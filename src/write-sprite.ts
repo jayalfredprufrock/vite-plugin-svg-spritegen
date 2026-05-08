@@ -4,7 +4,7 @@ import { writeIfChanged } from './write-if-changed';
 import type { Config as SvgoConfig } from 'svgo';
 import type { SvgMap } from './types';
 
-export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
+export const buildSpriteContent = (svgMap: SvgMap, spritePath?: string): string => {
   const symbols: string[] = [];
   const definitions: string[] = [];
 
@@ -13,7 +13,7 @@ export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
     .map(([_, svg]) => svg);
 
   for (const svg of svgSorted) {
-    if (spritePath === svg.filePath) continue;
+    if (spritePath && spritePath === svg.filePath) continue;
 
     let content = svg.content;
 
@@ -91,9 +91,11 @@ export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
 
   lines.push(...symbols.map(s => `  ${s}`), '</svg>');
 
-  const content = lines.join('\n');
+  return lines.join('\n');
+};
 
+export const writeSprite = (spritePath: string, svgMap: SvgMap): string => {
+  const content = buildSpriteContent(svgMap, spritePath);
   writeIfChanged(spritePath, content);
-
   return content;
 };
