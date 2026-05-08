@@ -34,6 +34,6 @@ jobs:
         run: npm run build
 
       - name: Tag and release
-        run: npx -p @semantic-release/git -p semantic-release-major-tag -p semantic-release semantic-release
+        run: npx -p @semantic-release/git -p semantic-release-major-tag -p semantic-release -p conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
