@@ -91,7 +91,7 @@ export function svgSpritegen(config: PluginConfig): Plugin {
       await writeTypes(typesFilePath, allSvgs);
 
       if (config.gitignore !== false) {
-        await writeGitignore(gitignoreFilePath, 'sprite.svg', 'types.ts');
+        await writeGitignore(gitignoreFilePath, spriteNameResolved);
       }
 
       if (isBuild) {
