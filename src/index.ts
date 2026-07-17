@@ -33,7 +33,21 @@ const inputConfigDefaults = {
 const stripUnusedDefaults = {
   enabled: true,
   matchPattern: defaultMatchPattern,
-  srcInclude: ['**/*.[jt]s?(x)', '**/*.[cm][jt]s', '**/*.md?(x)'],
+  // NOTE: rolldown's native `transform.filter.id` glob engine does not support extglobs
+  // (e.g. `?(x)`), so patterns like `**/*.[jt]s?(x)` or `**/*.md?(x)` silently match nothing.
+  // List each extension explicitly instead.
+  srcInclude: [
+    '**/*.js',
+    '**/*.jsx',
+    '**/*.ts',
+    '**/*.tsx',
+    '**/*.mjs',
+    '**/*.cjs',
+    '**/*.mts',
+    '**/*.cts',
+    '**/*.md',
+    '**/*.mdx',
+  ],
   srcExclude: [],
   whitelist: [],
 } satisfies Required<StripUnusedConfig>;

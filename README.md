@@ -81,8 +81,14 @@ svgSpritegen({
     // A RegExp (or string) with a named capture group `icon`. Every match is checked
     // against the real icon set, so unrelated strings are ignored automatically.
     matchPattern: /['"`](?<icon>[^'"`\r\n]+?)['"`]/g,
-    // Which files to scan / skip (node_modules is always excluded).
-    srcInclude: ['**/*.[jt]s?(x)', '**/*.[cm][jt]s', '**/*.md?(x)'],
+    // Which files to scan / skip (node_modules is always excluded). These are matched by
+    // rolldown's native glob engine, which supports `*`, `**`, and `[...]` character classes
+    // but NOT extglobs like `?(x)`, `@(a|b)`, `+(...)` — list each extension explicitly.
+    srcInclude: [
+      '**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx',
+      '**/*.mjs', '**/*.cjs', '**/*.mts', '**/*.cts',
+      '**/*.md', '**/*.mdx',
+    ],
     srcExclude: [],
     // Icon ids to always keep, even if they aren't detected in source.
     whitelist: [],

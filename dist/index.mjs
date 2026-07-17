@@ -159,7 +159,7 @@ var writeSprite = (spritePath, svgMap) => {
 };
 //#endregion
 //#region src/index.ts
-var defaultMatchPattern = /['"`]?icon['"`]?\s*[=:]{1}\s*['"`]{1}(?<icon>.+?)['"`]{1}/gi;
+var defaultMatchPattern = /['"`](?<icon>[^'"`\r\n]+?)['"`]/g;
 var inputConfigDefaults = {
 	pattern: "**/*.svg",
 	baseDir: "./",
@@ -171,7 +171,18 @@ var inputConfigDefaults = {
 var stripUnusedDefaults = {
 	enabled: true,
 	matchPattern: defaultMatchPattern,
-	srcInclude: ["**/*.[jt]sx", "**/*.md?(x)"],
+	srcInclude: [
+		"**/*.js",
+		"**/*.jsx",
+		"**/*.ts",
+		"**/*.tsx",
+		"**/*.mjs",
+		"**/*.cjs",
+		"**/*.mts",
+		"**/*.cts",
+		"**/*.md",
+		"**/*.mdx"
+	],
 	srcExclude: [],
 	whitelist: []
 };
