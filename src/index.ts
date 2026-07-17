@@ -9,7 +9,12 @@ import { writeIfChanged } from './write-if-changed';
 import type { FilterPattern, Plugin } from 'vite';
 import type { InputConfigWithDefaults, PluginConfig, StripUnusedConfig, SvgMap } from './types';
 
-const defaultMatchPattern = /['"`]?icon['"`]?\s*[=:]{1}\s*['"`]{1}(?<icon>.+?)['"`]{1}/gi;
+// Matches the contents of any single-quoted, double-quoted, or backtick string literal.
+// Because every match is validated against the actual icon set before being kept (see the
+// `transform` handler), this intentionally over-matches: it catches icon names wherever they
+// appear — component props, object/record values, ternaries, arrays — not just `icon="..."`.
+// Strings that don't correspond to a real icon are harmlessly ignored.
+const defaultMatchPattern = /['"`](?<icon>[^'"`\r\n]+?)['"`]/g;
 
 const inputConfigDefaults = {
   pattern: '**/*.svg',

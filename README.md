@@ -66,3 +66,34 @@ export const IconBase: FC<SVGProps<SVGSVGElement> & { icon: IconName }> = ({ ico
 ```jsx
 <Icon icon="plus" />
 ```
+
+### Stripping Unused Icons
+
+By default the plugin scans your source files during `build` and drops any icons that
+aren't referenced, keeping the emitted `sprite.svg` small. Configure this via `stripUnused`:
+
+```typescript
+svgSpritegen({
+  outputDir: 'src/assets/icons',
+  stripUnused: {
+    // Set false to include every source SVG in the sprite.
+    enabled: true,
+    // A RegExp (or string) with a named capture group `icon`. Every match is checked
+    // against the real icon set, so unrelated strings are ignored automatically.
+    matchPattern: /['"`](?<icon>[^'"`\r\n]+?)['"`]/g,
+    // Which files to scan / skip (node_modules is always excluded).
+    srcInclude: ['**/*.[jt]sx', '**/*.md?(x)'],
+    srcExclude: [],
+    // Icon ids to always keep, even if they aren't detected in source.
+    whitelist: [],
+  },
+});
+```
+
+The default `matchPattern` treats **any quoted string** (`"star"`, `'star'`, or
+`` `star` ``) as a possible icon reference. Because each candidate is validated against the
+generated icon set before being kept, over-matching is harmless — this catches icon names
+wherever they appear (component props, object/record values, ternaries, arrays) rather than
+only `icon="..."` assignments. Provide your own `matchPattern` (with an `icon` named group)
+to narrow this if needed, and use `whitelist` for icons chosen in ways static analysis can't
+see (e.g. names built from runtime data).
