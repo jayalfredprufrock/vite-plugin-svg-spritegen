@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-svg-spritegen",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "Vite plugin that generates an svg spritesheet, optionally removing unused svg files.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
