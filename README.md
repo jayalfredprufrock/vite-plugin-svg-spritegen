@@ -82,7 +82,7 @@ svgSpritegen({
     // against the real icon set, so unrelated strings are ignored automatically.
     matchPattern: /['"`](?<icon>[^'"`\r\n]+?)['"`]/g,
     // Which files to scan / skip (node_modules is always excluded).
-    srcInclude: ['**/*.[jt]sx', '**/*.md?(x)'],
+    srcInclude: ['**/*.[jt]s?(x)', '**/*.[cm][jt]s', '**/*.md?(x)'],
     srcExclude: [],
     // Icon ids to always keep, even if they aren't detected in source.
     whitelist: [],

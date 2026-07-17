@@ -33,7 +33,7 @@ const inputConfigDefaults = {
 const stripUnusedDefaults = {
   enabled: true,
   matchPattern: defaultMatchPattern,
-  srcInclude: ['**/*.[jt]sx', '**/*.md?(x)'],
+  srcInclude: ['**/*.[jt]s?(x)', '**/*.[cm][jt]s', '**/*.md?(x)'],
   srcExclude: [],
   whitelist: [],
 } satisfies Required<StripUnusedConfig>;
