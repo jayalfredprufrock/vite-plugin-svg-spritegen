@@ -3,8 +3,14 @@ import { promises as fs } from 'node:fs';
 import fastGlob from 'fast-glob';
 import type { InputConfigWithDefaults, SvgMap } from './types';
 
-export const buildSvgMap = async (inputConfigs: InputConfigWithDefaults[]): Promise<SvgMap> => {
+/**
+ * Every input SVG by symbol id. `spritePath` is left out: when an input's `baseDir` is also the output directory, the
+ * generated sprite matches the input pattern too, and would otherwise turn up as an icon (in the types as well as the
+ * sprite) whenever it already exists from an earlier run.
+ */
+export const buildSvgMap = async (inputConfigs: InputConfigWithDefaults[], spritePath?: string): Promise<SvgMap> => {
   const svgMap: SvgMap = new Map();
+  const excluded = spritePath && path.resolve(spritePath);
 
   await Promise.all(
     inputConfigs.map(async inputConfig => {
@@ -13,6 +19,7 @@ export const buildSvgMap = async (inputConfigs: InputConfigWithDefaults[]): Prom
       await Promise.all(
         matchedPaths.map(async matchPath => {
           const filePath = path.join(baseDir, matchPath);
+          if (path.resolve(filePath) === excluded) return;
           const content = await fs.readFile(filePath, 'utf8');
 
           const resolvedInputConfig = {

@@ -106,7 +106,7 @@ export function svgSpritegen(config: PluginConfig): Plugin {
     },
 
     async buildStart() {
-      allSvgs = await buildSvgMap(inputConfigsResolved);
+      allSvgs = await buildSvgMap(inputConfigsResolved, spriteFilePath);
       await writeTypes(typesFilePath, allSvgs);
 
       if (config.gitignore !== false) {
@@ -125,7 +125,7 @@ export function svgSpritegen(config: PluginConfig): Plugin {
 
       const onWatch = (changedPath: string) => {
         if (changedPath === spriteFilePath) return;
-        buildSvgMap(inputConfigsResolved).then(newAllSvgFiles => {
+        buildSvgMap(inputConfigsResolved, spriteFilePath).then(newAllSvgFiles => {
           writeSprite(spriteFilePath, newAllSvgFiles);
         });
       };
@@ -194,7 +194,7 @@ export function svgSpritegen(config: PluginConfig): Plugin {
       spriteRefId = this.emitFile({
         type: 'asset',
         name: spriteNameResolved,
-        source: buildSpriteContent(sourceMap, spriteFilePath),
+        source: buildSpriteContent(sourceMap),
       });
     },
 

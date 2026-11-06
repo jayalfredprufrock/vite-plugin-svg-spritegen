@@ -6,13 +6,20 @@ import fastGlob from "fast-glob";
 import { parse } from "node-html-parser";
 import { optimize } from "svgo";
 //#region src/build-svg-map.ts
-var buildSvgMap = async (inputConfigs) => {
+/**
+* Every input SVG by symbol id. `spritePath` is left out: when an input's `baseDir` is also the output directory, the
+* generated sprite matches the input pattern too, and would otherwise turn up as an icon (in the types as well as the
+* sprite) whenever it already exists from an earlier run.
+*/
+var buildSvgMap = async (inputConfigs, spritePath) => {
 	const svgMap = /* @__PURE__ */ new Map();
+	const excluded = spritePath && path.resolve(spritePath);
 	await Promise.all(inputConfigs.map(async (inputConfig) => {
 		const { pattern, baseDir, getSymbolId } = inputConfig;
 		const matchedPaths = await fastGlob(pattern, { cwd: baseDir });
 		await Promise.all(matchedPaths.map(async (matchPath) => {
 			const filePath = path.join(baseDir, matchPath);
+			if (path.resolve(filePath) === excluded) return;
 			const content = await promises.readFile(filePath, "utf8");
 			const resolvedInputConfig = {
 				...inputConfig,
@@ -97,12 +104,11 @@ var writeGitignore = async (filePath, spriteName) => {
 };
 //#endregion
 //#region src/write-sprite.ts
-var buildSpriteContent = (svgMap, spritePath) => {
+var buildSpriteContent = (svgMap) => {
 	const symbols = [];
 	const definitions = [];
 	const svgSorted = [...svgMap].sort((a, b) => String(a[0]).localeCompare(b[0])).map(([_, svg]) => svg);
 	for (const svg of svgSorted) {
-		if (spritePath && spritePath === svg.filePath) continue;
 		let content = svg.content;
 		if (svg.svgo !== false) {
 			const svgoDefault = { plugins: [
@@ -153,7 +159,7 @@ var buildSpriteContent = (svgMap, spritePath) => {
 	return lines.join("\n");
 };
 var writeSprite = (spritePath, svgMap) => {
-	const content = buildSpriteContent(svgMap, spritePath);
+	const content = buildSpriteContent(svgMap);
 	writeIfChanged(spritePath, content);
 	return content;
 };
@@ -223,7 +229,7 @@ function svgSpritegen(config) {
 			viteBase = config.base ?? "/";
 		},
 		async buildStart() {
-			allSvgs = await buildSvgMap(inputConfigsResolved);
+			allSvgs = await buildSvgMap(inputConfigsResolved, spriteFilePath);
 			await writeTypes(typesFilePath, allSvgs);
 			if (config.gitignore !== false) await writeGitignore(gitignoreFilePath, spriteNameResolved);
 			if (isBuild) {
@@ -233,7 +239,7 @@ function svgSpritegen(config) {
 			writeSprite(spriteFilePath, allSvgs);
 			const onWatch = (changedPath) => {
 				if (changedPath === spriteFilePath) return;
-				buildSvgMap(inputConfigsResolved).then((newAllSvgFiles) => {
+				buildSvgMap(inputConfigsResolved, spriteFilePath).then((newAllSvgFiles) => {
 					writeSprite(spriteFilePath, newAllSvgFiles);
 				});
 			};
@@ -283,7 +289,7 @@ function svgSpritegen(config) {
 			spriteRefId = this.emitFile({
 				type: "asset",
 				name: spriteNameResolved,
-				source: buildSpriteContent(sourceMap, spriteFilePath)
+				source: buildSpriteContent(sourceMap)
 			});
 		},
 		renderChunk: {
