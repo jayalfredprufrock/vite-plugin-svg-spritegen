@@ -1,7 +1,7 @@
+import { mkdirSync, promises, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { watch } from "chokidar";
 import { normalizePath } from "vite";
-import { promises, readFileSync, writeFileSync } from "node:fs";
 import fastGlob from "fast-glob";
 import { parse } from "node-html-parser";
 import { optimize } from "svgo";
@@ -196,22 +196,27 @@ var SPRITE_VIRTUAL_ID = "\0virtual:svg-spritegen-sprite";
 var SPRITE_URL_PLACEHOLDER = "__SVG_SPRITEGEN_SPRITE_URL_PLACEHOLDER__";
 var toFilterArray = (p) => [p].flat().filter((x) => x != null);
 function svgSpritegen(config) {
-	const inputConfigsResolved = (Array.isArray(config.input) ? config.input : [config.input ?? inputConfigDefaults]).map((inputConfig) => {
-		const baseDir = path.resolve(process.cwd(), inputConfig.baseDir ?? inputConfigDefaults.baseDir);
-		return {
-			...inputConfigDefaults,
-			...inputConfig,
-			baseDir
-		};
-	});
+	const inputConfigs = Array.isArray(config.input) ? config.input : [config.input ?? inputConfigDefaults];
+	const resolveInputs = (root) => inputConfigs.map((inputConfig) => ({
+		...inputConfigDefaults,
+		...inputConfig,
+		baseDir: path.resolve(root, inputConfig.baseDir ?? inputConfigDefaults.baseDir)
+	}));
+	let inputConfigsResolved = resolveInputs(process.cwd());
 	const stripUnusedResolved = { ...stripUnusedDefaults };
 	if (typeof config.stripUnused === "object") Object.assign(stripUnusedResolved, config.stripUnused);
 	else if (config.stripUnused === false) stripUnusedResolved.enabled = false;
-	const outputPath = path.resolve(process.cwd(), config.outputDir);
 	const spriteNameResolved = config.spriteFileName ?? "sprite.svg";
-	const typesFilePath = normalizePath(path.join(outputPath, config.typesFileName ?? "types.ts"));
-	const spriteFilePath = normalizePath(path.join(outputPath, spriteNameResolved));
-	const gitignoreFilePath = normalizePath(path.join(outputPath, ".gitignore"));
+	const resolveOutput = (root) => {
+		const outputPath = path.resolve(root, config.outputDir);
+		return {
+			outputPath,
+			typesFilePath: normalizePath(path.join(outputPath, config.typesFileName ?? "types.ts")),
+			spriteFilePath: normalizePath(path.join(outputPath, spriteNameResolved)),
+			gitignoreFilePath: normalizePath(path.join(outputPath, ".gitignore"))
+		};
+	};
+	let { outputPath, typesFilePath, spriteFilePath, gitignoreFilePath } = resolveOutput(process.cwd());
 	const matchPatternRe = new RegExp(stripUnusedResolved.matchPattern, "g");
 	const idIncludes = toFilterArray(stripUnusedResolved.srcInclude);
 	const idExcludes = ["**/node_modules/**", ...toFilterArray(stripUnusedResolved.srcExclude)];
@@ -224,11 +229,14 @@ function svgSpritegen(config) {
 	return {
 		name: "svg-spritegen",
 		enforce: "pre",
-		configResolved(config) {
-			isBuild = config.command === "build";
-			viteBase = config.base ?? "/";
+		configResolved(viteConfig) {
+			isBuild = viteConfig.command === "build";
+			viteBase = viteConfig.base ?? "/";
+			inputConfigsResolved = resolveInputs(viteConfig.root);
+			({outputPath, typesFilePath, spriteFilePath, gitignoreFilePath} = resolveOutput(viteConfig.root));
 		},
 		async buildStart() {
+			mkdirSync(outputPath, { recursive: true });
 			allSvgs = await buildSvgMap(inputConfigsResolved, spriteFilePath);
 			await writeTypes(typesFilePath, allSvgs);
 			if (config.gitignore !== false) await writeGitignore(gitignoreFilePath, spriteNameResolved);

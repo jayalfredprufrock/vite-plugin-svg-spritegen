@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { FSWatcher, watch as watchDirs } from 'chokidar';
 import { normalizePath } from 'vite';
@@ -62,14 +63,14 @@ export function svgSpritegen(config: PluginConfig): Plugin {
   const inputConfigs = Array.isArray(config.input)
     ? config.input
     : [config.input ?? inputConfigDefaults];
-  const inputConfigsResolved = inputConfigs.map(inputConfig => {
-    const baseDir = path.resolve(process.cwd(), inputConfig.baseDir ?? inputConfigDefaults.baseDir);
-    return {
+  // Relative paths (input baseDirs, outputDir) are resolved against Vite's root once it's known.
+  const resolveInputs = (root: string) =>
+    inputConfigs.map(inputConfig => ({
       ...inputConfigDefaults,
       ...inputConfig,
-      baseDir,
-    };
-  });
+      baseDir: path.resolve(root, inputConfig.baseDir ?? inputConfigDefaults.baseDir),
+    }));
+  let inputConfigsResolved = resolveInputs(process.cwd());
 
   const stripUnusedResolved: Required<StripUnusedConfig> = { ...stripUnusedDefaults };
   if (typeof config.stripUnused === 'object') {
@@ -78,11 +79,19 @@ export function svgSpritegen(config: PluginConfig): Plugin {
     stripUnusedResolved.enabled = false;
   }
 
-  const outputPath = path.resolve(process.cwd(), config.outputDir);
   const spriteNameResolved = config.spriteFileName ?? 'sprite.svg';
-  const typesFilePath = normalizePath(path.join(outputPath, config.typesFileName ?? 'types.ts'));
-  const spriteFilePath = normalizePath(path.join(outputPath, spriteNameResolved));
-  const gitignoreFilePath = normalizePath(path.join(outputPath, '.gitignore'));
+  const resolveOutput = (root: string) => {
+    const outputPath = path.resolve(root, config.outputDir);
+    return {
+      outputPath,
+      typesFilePath: normalizePath(path.join(outputPath, config.typesFileName ?? 'types.ts')),
+      spriteFilePath: normalizePath(path.join(outputPath, spriteNameResolved)),
+      gitignoreFilePath: normalizePath(path.join(outputPath, '.gitignore')),
+    };
+  };
+  let { outputPath, typesFilePath, spriteFilePath, gitignoreFilePath } = resolveOutput(
+    process.cwd(),
+  );
 
   const matchPatternRe = new RegExp(stripUnusedResolved.matchPattern, 'g');
 
@@ -100,12 +109,19 @@ export function svgSpritegen(config: PluginConfig): Plugin {
     name: 'svg-spritegen',
     enforce: 'pre',
 
-    configResolved(config) {
-      isBuild = config.command === 'build';
-      viteBase = config.base ?? '/';
+    configResolved(viteConfig) {
+      isBuild = viteConfig.command === 'build';
+      viteBase = viteConfig.base ?? '/';
+      inputConfigsResolved = resolveInputs(viteConfig.root);
+      ({ outputPath, typesFilePath, spriteFilePath, gitignoreFilePath } = resolveOutput(
+        viteConfig.root,
+      ));
     },
 
     async buildStart() {
+      // Everything below writes into outputDir, which may not exist yet (e.g. all icons come
+      // from node_modules, so the project has no icon folder of its own).
+      mkdirSync(outputPath, { recursive: true });
       allSvgs = await buildSvgMap(inputConfigsResolved, spriteFilePath);
       await writeTypes(typesFilePath, allSvgs);
 

@@ -36,6 +36,8 @@ export default {
 };
 ```
 
+Relative paths (`baseDir`, `outputDir`) are resolved against Vite's `root`. The output directory is created if it doesn't exist.
+
 ### Generated Files
 
 The plugin writes two files to `outputDir`:

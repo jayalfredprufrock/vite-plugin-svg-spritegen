@@ -24,11 +24,11 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 	enumerable: true
 }) : target, mod));
 //#endregion
+let node_fs = require("node:fs");
 let node_path = require("node:path");
 node_path = __toESM(node_path);
 let chokidar = require("chokidar");
 let vite = require("vite");
-let node_fs = require("node:fs");
 let fast_glob = require("fast-glob");
 fast_glob = __toESM(fast_glob);
 let node_html_parser = require("node-html-parser");
@@ -224,22 +224,27 @@ var SPRITE_VIRTUAL_ID = "\0virtual:svg-spritegen-sprite";
 var SPRITE_URL_PLACEHOLDER = "__SVG_SPRITEGEN_SPRITE_URL_PLACEHOLDER__";
 var toFilterArray = (p) => [p].flat().filter((x) => x != null);
 function svgSpritegen(config) {
-	const inputConfigsResolved = (Array.isArray(config.input) ? config.input : [config.input ?? inputConfigDefaults]).map((inputConfig) => {
-		const baseDir = node_path.default.resolve(process.cwd(), inputConfig.baseDir ?? inputConfigDefaults.baseDir);
-		return {
-			...inputConfigDefaults,
-			...inputConfig,
-			baseDir
-		};
-	});
+	const inputConfigs = Array.isArray(config.input) ? config.input : [config.input ?? inputConfigDefaults];
+	const resolveInputs = (root) => inputConfigs.map((inputConfig) => ({
+		...inputConfigDefaults,
+		...inputConfig,
+		baseDir: node_path.default.resolve(root, inputConfig.baseDir ?? inputConfigDefaults.baseDir)
+	}));
+	let inputConfigsResolved = resolveInputs(process.cwd());
 	const stripUnusedResolved = { ...stripUnusedDefaults };
 	if (typeof config.stripUnused === "object") Object.assign(stripUnusedResolved, config.stripUnused);
 	else if (config.stripUnused === false) stripUnusedResolved.enabled = false;
-	const outputPath = node_path.default.resolve(process.cwd(), config.outputDir);
 	const spriteNameResolved = config.spriteFileName ?? "sprite.svg";
-	const typesFilePath = (0, vite.normalizePath)(node_path.default.join(outputPath, config.typesFileName ?? "types.ts"));
-	const spriteFilePath = (0, vite.normalizePath)(node_path.default.join(outputPath, spriteNameResolved));
-	const gitignoreFilePath = (0, vite.normalizePath)(node_path.default.join(outputPath, ".gitignore"));
+	const resolveOutput = (root) => {
+		const outputPath = node_path.default.resolve(root, config.outputDir);
+		return {
+			outputPath,
+			typesFilePath: (0, vite.normalizePath)(node_path.default.join(outputPath, config.typesFileName ?? "types.ts")),
+			spriteFilePath: (0, vite.normalizePath)(node_path.default.join(outputPath, spriteNameResolved)),
+			gitignoreFilePath: (0, vite.normalizePath)(node_path.default.join(outputPath, ".gitignore"))
+		};
+	};
+	let { outputPath, typesFilePath, spriteFilePath, gitignoreFilePath } = resolveOutput(process.cwd());
 	const matchPatternRe = new RegExp(stripUnusedResolved.matchPattern, "g");
 	const idIncludes = toFilterArray(stripUnusedResolved.srcInclude);
 	const idExcludes = ["**/node_modules/**", ...toFilterArray(stripUnusedResolved.srcExclude)];
@@ -252,11 +257,14 @@ function svgSpritegen(config) {
 	return {
 		name: "svg-spritegen",
 		enforce: "pre",
-		configResolved(config) {
-			isBuild = config.command === "build";
-			viteBase = config.base ?? "/";
+		configResolved(viteConfig) {
+			isBuild = viteConfig.command === "build";
+			viteBase = viteConfig.base ?? "/";
+			inputConfigsResolved = resolveInputs(viteConfig.root);
+			({outputPath, typesFilePath, spriteFilePath, gitignoreFilePath} = resolveOutput(viteConfig.root));
 		},
 		async buildStart() {
+			(0, node_fs.mkdirSync)(outputPath, { recursive: true });
 			allSvgs = await buildSvgMap(inputConfigsResolved, spriteFilePath);
 			await writeTypes(typesFilePath, allSvgs);
 			if (config.gitignore !== false) await writeGitignore(gitignoreFilePath, spriteNameResolved);
